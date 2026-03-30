@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사주 명리 — AI 사주 해석</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;500;700&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0b08;
+    --surface: #151210;
+    --surface2: #1d1a16;
+    --border: rgba(255,220,150,0.12);
+    --gold: #c8a96e;
+    --gold-light: #e8c98e;
+    --gold-dim: rgba(200,169,110,0.3);
+    --text: #e8dcc8;
+    --text-dim: rgba(232,220,200,0.5);
+    --text-muted: rgba(232,220,200,0.3);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .bg-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 60px 24px 80px;
+  }
+
+  /* 헤더 */
+  .header { text-align: center; margin-bottom: 56px; }
+
+  .header-symbol {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 48px;
+    color: var(--gold);
+    opacity: 0.7;
+    line-height: 1;
+    margin-bottom: 16px;
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  .header h1 {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 32px;
+    font-weight: 500;
+    color: var(--gold-light);
+    letter-spacing: 0.15em;
+    margin-bottom: 12px;
+  }
+
+  .header p {
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    line-height: 1.8;
+  }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 32px 0;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .divider-symbol { color: var(--gold-dim); font-size: 14px; }
+
+  /* 폼 */
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 36px 32px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .form-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+  }
+
+  .form-section-label {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 13px;
+    color: var(--gold);
+    letter-spacing: 0.15em;
+    margin-bottom: 20px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+
+  label { font-size: 11px; color: var(--text-dim); letter-spacing: 0.08em; }
+
+  input, select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px;
+    padding: 11px 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--gold-dim);
+    box-shadow: 0 0 0 3px rgba(200,169,110,0.08);
+  }
+  input::placeholder { color: var(--text-muted); }
+  select option { background: #1d1a16; }
+
+  .gender-toggle { display: flex; gap: 8px; }
+  .gender-btn {
+    flex: 1;
+    padding: 11px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-dim);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .gender-btn.active {
+    background: var(--gold-dim);
+    border-color: var(--gold);
+    color: var(--gold-light);
+  }
+
+  .btn-submit {
+    width: 100%;
+    padding: 16px;
+    background: transparent;
+    border: 1px solid var(--gold);
+    border-radius: 10px;
+    color: var(--gold-light);
+    font-family: 'Noto Serif KR', serif;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .btn-submit::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--gold-dim);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+  }
+  .btn-submit:hover::before { transform: scaleX(1); }
+  .btn-submit:hover { letter-spacing: 0.25em; }
+  .btn-submit span { position: relative; z-index: 1; }
+  .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-submit:disabled::before { display: none; }
+
+  /* 로딩 */
+  .loading { display: none; text-align: center; padding: 60px 0; }
+  .loading.show { display: block; }
+  .loading-symbol {
+    font-size: 36px;
+    color: var(--gold);
+    animation: spin 4s linear infinite;
+    display: inline-block;
+    margin-bottom: 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text {
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:0.5} 50%{opacity:1} }
+
+  /* 결과 */
+  .result-area { display: none; }
+  .result-area.show { display: block; }
+
+  .pillars-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .pillars-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+  }
+
+  .pillars-title {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 12px;
+    color: var(--gold);
+    letter-spacing: 0.2em;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .pillars-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  .pillar {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 8px;
+    text-align: center;
+  }
+  .pillar-label { font-size: 10px; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 10px; }
+  .pillar-stem { font-family: 'Noto Serif KR', serif; font-size: 24px; font-weight: 500; line-height: 1; margin-bottom: 4px; }
+  .pillar-branch { font-family: 'Noto Serif KR', serif; font-size: 22px; line-height: 1; }
+  .pillar-sub { font-size: 10px; color: var(--text-muted); margin-top: 8px; line-height: 1.6; }
+
+  .c-fire  { color: #d06050; }
+  .c-water { color: #5080b8; }
+  .c-wood  { color: #609060; }
+  .c-earth { color: #a08840; }
+  .c-metal { color: #8090a0; }
+
+  .ohaeng-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .oh-item { text-align: center; }
+  .oh-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+  .oh-bar-wrap { height: 40px; display: flex; align-items: flex-end; justify-content: center; }
+  .oh-bar { width: 20px; border-radius: 3px 3px 0 0; }
+  .oh-count { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+  .ai-result {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .ai-result::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+  }
+  .ai-result-title {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 12px;
+    color: var(--gold);
+    letter-spacing: 0.2em;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+  .ai-content {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 14px;
+    line-height: 2;
+    color: var(--text);
+  }
+  .ai-content h2 {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--gold-light);
+    margin: 28px 0 12px;
+    letter-spacing: 0.05em;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ai-content h2:first-child { margin-top: 0; }
+  .ai-content p { margin-bottom: 12px; }
+  .ai-content strong { color: var(--gold); font-weight: 500; }
+
+  .cursor {
+    display: inline-block;
+    width: 2px;
+    height: 16px;
+    background: var(--gold);
+    margin-left: 2px;
+    vertical-align: middle;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  .btn-reset {
+    display: block;
+    margin: 24px auto 0;
+    padding: 10px 28px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-dim);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-reset:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+  .error-msg {
+    background: rgba(184,80,64,0.1);
+    border: 1px solid rgba(184,80,64,0.3);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 13px;
+    color: #d08070;
+    margin-top: 12px;
+    display: none;
+  }
+  .error-msg.show { display: block; }
+
+  @media (max-width: 480px) {
+    .container { padding: 40px 16px 60px; }
+    .form-card { padding: 24px 18px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .pillars-grid { gap: 6px; }
+    .pillar-stem { font-size: 20px; }
+    .pillar-branch { font-size: 18px; }
+    .header h1 { font-size: 26px; }
+  }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<canvas class="bg-canvas" id="bgCanvas"></canvas>
+
+<div class="container">
+  <header class="header">
+    <div class="header-symbol">命</div>
+    <h1>사주 명리</h1>
+    <p>생년월일시를 입력하면<br>명리학 AI가 사주를 풀어드립니다</p>
+  </header>
+
+  <div id="inputSection">
+    <div class="form-card">
+      <div class="form-section-label">생년월일 · 시간</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>생년 (서기)</label>
+          <input type="number" id="year" placeholder="1990" min="1900" max="2024">
+        </div>
+        <div class="form-group">
+          <label>생월</label>
+          <select id="month">
+            <option value="">월 선택</option>
+            <option value="1">1월</option><option value="2">2월</option>
+            <option value="3">3월</option><option value="4">4월</option>
+            <option value="5">5월</option><option value="6">6월</option>
+            <option value="7">7월</option><option value="8">8월</option>
+            <option value="9">9월</option><option value="10">10월</option>
+            <option value="11">11월</option><option value="12">12월</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>생일</label>
+          <input type="number" id="day" placeholder="1" min="1" max="31">
+        </div>
+        <div class="form-group">
+          <label>출생 시각</label>
+          <input type="time" id="time" value="12:00">
+        </div>
+        <div class="form-group full">
+          <label>성별</label>
+          <div class="gender-toggle">
+            <button class="gender-btn active" id="genderM" onclick="setGender('남')">남 (男)</button>
+            <button class="gender-btn" id="genderF" onclick="setGender('여')">여 (女)</button>
+          </div>
+        </div>
+        <div class="form-group full">
+          <label>이름 (선택)</label>
+          <input type="text" id="name" placeholder="이름을 입력하면 더 풍부한 해석이 제공됩니다">
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-submit" id="submitBtn" onclick="runSaju()">
+      <span>사주 풀기</span>
+    </button>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="loading-symbol">☯</div>
+    <div class="loading-text">천간과 지지를 살피는 중...</div>
+  </div>
+
+  <div class="result-area" id="resultArea">
+    <div class="pillars-card" id="pillarsCard"></div>
+    <div class="divider"><span class="divider-symbol">◈</span></div>
+    <div class="ai-result">
+      <div class="ai-result-title">명리학 해석</div>
+      <div class="ai-content" id="aiContent"></div>
+    </div>
+    <button class="btn-reset" onclick="resetForm()">다시 입력하기</button>
+  </div>
+</div>
+
+<script>
+// ─── 명리 계산 ───────────────────────────────────────
+const 천간 = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const 지지 = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const 천간오행 = ['木','木','火','火','土','土','金','金','水','水'];
+const 지지오행 = ['水','土','木','木','土','火','火','土','金','金','土','水'];
+const 천간색 = {
+  '甲':'c-wood','乙':'c-wood','丙':'c-fire','丁':'c-fire',
+  '戊':'c-earth','己':'c-earth','庚':'c-metal','辛':'c-metal',
+  '壬':'c-water','癸':'c-water'
+};
+
+function getMonthBranch(month, day) {
+  const 절입 = [6,4,6,5,6,6,7,8,8,8,7,7];
+  const 월지순서 = ['寅','卯','辰','巳','午','未','申','酉','戌','亥','子','丑'];
+  const idx = month - 1;
+  const branchIdx = day < 절입[idx] ? (idx + 11) % 12 : idx;
+  return 월지순서[branchIdx];
+}
+
+function getYearPillar(year, month, day) {
+  let y = year;
+  if (month === 1 || (month === 2 && day < 4)) y = year - 1;
+  const stemIdx = ((y - 4) % 10 + 10) % 10;
+  const branchIdx = ((y - 4) % 12 + 12) % 12;
+  return { stem: 천간[stemIdx], branch: 지지[branchIdx], stemIdx, branchIdx };
+}
+
+function getMonthPillar(yearStemIdx, month, day) {
+  const branch = getMonthBranch(month, day);
+  const branchIdx = 지지.indexOf(branch);
+  const base = [2,4,6,8,0][yearStemIdx % 5];
+  const 월지순서 = ['寅','卯','辰','巳','午','未','申','酉','戌','亥','子','丑'];
+  const monthSeq = 월지순서.indexOf(branch);
+  const stemIdx = (base + monthSeq) % 10;
+  return { stem: 천간[stemIdx], branch, stemIdx, branchIdx };
+}
+
+function getDayPillar(year, month, day) {
+  const a = Math.floor((14 - month) / 12);
+  const y = year + 4800 - a;
+  const m = month + 12 * a - 3;
+  const jdn = day + Math.floor((153*m+2)/5) + 365*y +
+    Math.floor(y/4) - Math.floor(y/100) + Math.floor(y/400) - 32045;
+  const base = 2451546;
+  const diff = jdn - base;
+  const stemIdx = ((diff % 10) + 10) % 10;
+  const branchIdx = (((diff + 10) % 12) + 12) % 12;
+  return { stem: 천간[stemIdx], branch: 지지[branchIdx], stemIdx, branchIdx };
+}
+
+function getHourPillar(dayStemIdx, hour) {
+  const branchIdx = Math.floor((hour + 1) / 2) % 12;
+  const base = [0,2,4,6,8][dayStemIdx % 5];
+  const stemIdx = (base + branchIdx) % 10;
+  return { stem: 천간[stemIdx], branch: 지지[branchIdx], stemIdx, branchIdx };
+}
+
+function calcSaju(year, month, day, hour) {
+  const yr = getYearPillar(year, month, day);
+  const mo = getMonthPillar(yr.stemIdx, month, day);
+  const da = getDayPillar(year, month, day);
+  const hr = getHourPillar(da.stemIdx, hour);
+  return { year: yr, month: mo, day: da, hour: hr };
+}
+
+function countOhaeng(saju) {
+  const c = { 木:0, 火:0, 土:0, 金:0, 水:0 };
+  ['year','month','day','hour'].forEach(k => {
+    c[천간오행[saju[k].stemIdx]]++;
+    c[지지오행[saju[k].branchIdx]]++;
+  });
+  return c;
+}
+
+// ─── UI ────────────────────────────────────────────
+let gender = '남';
+
+function setGender(g) {
+  gender = g;
+  document.getElementById('genderM').classList.toggle('active', g === '남');
+  document.getElementById('genderF').classList.toggle('active', g === '여');
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function hideError() {
+  document.getElementById('errorMsg').classList.remove('show');
+}
+
+function resetForm() {
+  document.getElementById('inputSection').style.display = '';
+  document.getElementById('resultArea').classList.remove('show');
+  document.getElementById('submitBtn').disabled = false;
+  hideError();
+}
+
+function renderPillars(saju, ohaeng) {
+  const labels = ['시주','일주 (나)','월주','년주'];
+  const pillars = [saju.hour, saju.day, saju.month, saju.year];
+  const ohColors = { 木:'#609060', 火:'#d06050', 土:'#a08840', 金:'#8090a0', 水:'#5080b8' };
+
+  let html = `<div class="pillars-title">사 주 팔 자 (四柱八字)</div><div class="pillars-grid">`;
+  pillars.forEach((p, i) => {
+    const sc = 천간색[p.stem] || '';
+    html += `
+      <div class="pillar">
+        <div class="pillar-label">${labels[i]}</div>
+        <div class="pillar-stem ${sc}">${p.stem}</div>
+        <div class="pillar-branch ${sc}">${p.branch}</div>
+        <div class="pillar-sub">${천간오행[p.stemIdx]}·${지지오행[p.branchIdx]}</div>
+      </div>`;
+  });
+  html += `</div><div class="ohaeng-row">`;
+
+  const max = Math.max(...Object.values(ohaeng), 1);
+  ['木','火','土','金','水'].forEach(oh => {
+    const h = Math.max(6, (ohaeng[oh] / (max+1)) * 38);
+    html += `
+      <div class="oh-item">
+        <div class="oh-label">${oh}</div>
+        <div class="oh-bar-wrap"><div class="oh-bar" style="height:${h}px;background:${ohColors[oh]};opacity:0.75"></div></div>
+        <div class="oh-count">${ohaeng[oh]}</div>
+      </div>`;
+  });
+  html += `</div>`;
+  document.getElementById('pillarsCard').innerHTML = html;
+}
+
+function renderMarkdown(text) {
+  return text
+    .replace(/## (.+)/g, '<h2>$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^(?!<h2)/, '<p>')
+    .replace(/(?<!>)$/, '</p>');
+}
+
+// ─── 메인 실행 ──────────────────────────────────────
+async function runSaju() {
+  hideError();
+
+  const year  = parseInt(document.getElementById('year').value);
+  const month = parseInt(document.getElementById('month').value);
+  const day   = parseInt(document.getElementById('day').value);
+  const time  = document.getElementById('time').value;
+  const name  = document.getElementById('name').value.trim();
+
+  if (!year || !month || !day) return showError('생년월일을 입력해주세요.');
+  if (!time) return showError('출생 시각을 입력해주세요.');
+
+  const [hour, minute] = time.split(':').map(Number);
+  const saju = calcSaju(year, month, day, hour);
+  const ohaeng = countOhaeng(saju);
+
+  document.getElementById('inputSection').style.display = 'none';
+  document.getElementById('loading').classList.add('show');
+  document.getElementById('submitBtn').disabled = true;
+
+  renderPillars(saju, ohaeng);
+
+  const nameStr = name ? `이름: ${name}\n` : '';
+  const prompt = `당신은 20년 경력의 명리학 전문가입니다. 아래 사주를 명리학적으로 깊고 정확하게 해석해주세요.
+
+${nameStr}성별: ${gender}
+생년월일: ${year}년 ${month}월 ${day}일 ${hour}시 ${minute}분생
+
+사주 팔자:
+- 년주: ${saju.year.stem}${saju.year.branch} (${천간오행[saju.year.stemIdx]}·${지지오행[saju.year.branchIdx]})
+- 월주: ${saju.month.stem}${saju.month.branch} (${천간오행[saju.month.stemIdx]}·${지지오행[saju.month.branchIdx]})
+- 일주: ${saju.day.stem}${saju.day.branch} (${천간오행[saju.day.stemIdx]}·${지지오행[saju.day.branchIdx]})
+- 시주: ${saju.hour.stem}${saju.hour.branch} (${천간오행[saju.hour.stemIdx]}·${지지오행[saju.hour.branchIdx]})
+
+오행 분포: 木${ohaeng['木']} 火${ohaeng['火']} 土${ohaeng['土']} 金${ohaeng['金']} 水${ohaeng['水']}
+
+다음 순서로 해석해주세요:
+
+## 일간 분석
+일간(日干)의 성격과 특성, 음양오행적 의미를 설명하세요.
+
+## 사주 구조와 격국
+격국(格局)을 판단하고 용신(用神)과 기신(忌神)을 설명하세요.
+
+## 성격과 적성
+사주에서 드러나는 성격, 강점, 약점, 어울리는 직업군을 설명하세요.
+
+## 2026년 (병오년) 세운
+2026년 丙午년 기운이 이 사주에 어떤 영향을 주는지 — 직업·재물·건강·인간관계 측면에서 구체적으로 설명하세요.
+
+## 월별 흐름 (2026)
+2026년 상반기(1~6월)와 하반기(7~12월)의 기운 흐름을 정리하세요.
+
+## 조언
+이 사주를 가진 분께 명리학적 관점에서 가장 중요한 조언을 해주세요.
+
+해석은 정확하고 깊이 있게, 명리학 용어를 적절히 사용하되 이해하기 쉽게 서술해주세요.`;
+
+  try {
+    const res = await fetch('/api/saju', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || `서버 오류 (${res.status})`);
+    }
+
+    document.getElementById('loading').classList.remove('show');
+    document.getElementById('resultArea').classList.add('show');
+    document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth' });
+
+    const contentEl = document.getElementById('aiContent');
+    contentEl.innerHTML = '<span class="cursor"></span>';
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value);
+      for (const line of chunk.split('\n')) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') continue;
+        try {
+          const json = JSON.parse(data);
+          if (json.type === 'content_block_delta' && json.delta?.text) {
+            fullText += json.delta.text;
+            contentEl.innerHTML = renderMarkdown(fullText) + '<span class="cursor"></span>';
+          }
+        } catch {}
+      }
+    }
+
+    contentEl.innerHTML = renderMarkdown(fullText);
+
+  } catch (e) {
+    document.getElementById('loading').classList.remove('show');
+    document.getElementById('inputSection').style.display = '';
+    document.getElementById('submitBtn').disabled = false;
+    showError('오류: ' + e.message);
+  }
+}
+
+// ─── 별 배경 ────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+
+  function init() {
+    stars = Array.from({ length: 80 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.2 + 0.2,
+      speed: Math.random() * 0.003 + 0.001,
+      phase: Math.random() * Math.PI * 2,
+    }));
+  }
+
+  function draw(t) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    stars.forEach(s => {
+      const a = (Math.sin(t * s.speed * 1000 + s.phase) + 1) / 2 * 0.4 + 0.1;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(200,169,110,${a})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+
+  resize(); init(); requestAnimationFrame(draw);
+  window.addEventListener('resize', () => { resize(); init(); });
+})();
+</script>
+</body>
+</html>
